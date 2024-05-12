@@ -7,6 +7,7 @@ from responses import get_response
 #  Loading token
 load_dotenv()
 TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
+# OPEN_AI_KEY: Final[str] = os.getenv('OPENAI_API_KEY')
 
 # Bot setup
 intents: Intents = Intents.default()
@@ -24,10 +25,11 @@ async def send_message(message: Message, user_message:str)->None:
 
     try:
         response: str = get_response(user_message)
+        print('This is the returned messgae:' + response)
         await message.author.send(response) if is_private else await message.channel.send(response)
 
     except Exception as e:
-        print(e)
+        print(f'{e}')
 
 # Startup
 @client.event
@@ -36,16 +38,15 @@ async def on_ready() -> None:
 
 #  Handle incomming messages
 @client.event
-async def on_message(message: Message)-> None:
+async def on_message(message):
     if message.author == client.user:
         return
     
     username: str = str(message.author)
-    user_message: str = message.content
     channel: str = str(message.channel)
 
-    print(f'[{channel}] {username}: "{user_message}')
-    await send_message(message,user_message)
+    print(f'[{channel}] {username}: "{message.content}"')
+    await send_message(message,message.content)
 
 # Main entry point
 def main()->None:
