@@ -1,8 +1,11 @@
+import asyncio
 from typing import Final
 import os
 from dotenv import load_dotenv
-from discord import Intents, Client, Message
-from responses import get_response
+from discord import Intents, Client, Message, Interaction
+from discord.ext import commands
+from responses import get_response, paint
+
 
 #  Loading token
 load_dotenv()
@@ -12,45 +15,59 @@ TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 # Bot setup
 intents: Intents = Intents.default()
 intents.message_content = True 
-client: Client = Client(intents = intents)
+bot: Client = Client(intents = intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Message functionality
-async def send_message(message: Message, user_message:str)->None:
-    if not user_message:
-        print('Empty message detected!')
-        return
-    
-    if is_private := user_message[0]=='?':
-        user_message = user_message[1:]
-
-    try:
-        response: str = get_response(user_message)
-        print('This is the returned messgae:' + response)
-        await message.author.send(response) if is_private else await message.channel.send(response)
-
-    except Exception as e:
-        print(f'{e}')
 
 # Startup
-@client.event
+@bot.event
 async def on_ready() -> None:
-    print(f'{client.user} is now running')
+    print(f'{bot.user} is now running')
 
-#  Handle incomming messages
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+
+
+@bot.command(name="chat", description="Have a chat with ChatGPT")
+async def chat(interaction: Interaction, *, message: str):
+        if interaction.author == bot.user:
+            return
+        username: str = str(interaction.author)
+        channel: str = str(interaction.channel)
+        print(f'[{channel}] {username}: "{message}"')
+        
+        if not message:
+            print('Empty message detected!')
+            return
+            
+        if is_private := message[0]=='?':
+            message = message[1:]
+        try:
+            response: str = get_response(message)
+            print('This is the returned messgae:' + response)
+            async with interaction.typing():
+                await asyncio.sleep(1)
+            await interaction.author.send(response) if is_private else await interaction.channel.send(response)
+
+        except Exception as e:
+            print(f'{e}')       
+ 
+
     
-    username: str = str(message.author)
-    channel: str = str(message.channel)
-
-    print(f'[{channel}] {username}: "{message.content}"')
-    await send_message(message,message.content)
+@bot.command(name="draw", description="Generate images using")
+async def draw(interaction:Interaction, *, prompt: str): 
+    if interaction.author == bot.user:
+        return
+    username: str = str(interaction.author)
+    channel: str = str(interaction.channel)
+    print(f'[{channel}] {username}: "{prompt}"') 
+    try:
+        response: str = paint(prompt)  
+        await interaction.send(response)  
+    except Exception as e:
+        print(f'{e}')    
 
 # Main entry point
 def main()->None:
-    client.run(token=TOKEN)
+    bot.run(token=TOKEN)
 
 if __name__ =='__main__':
     main()
